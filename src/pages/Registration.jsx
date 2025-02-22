@@ -1,9 +1,14 @@
 import RegistrationForm from '../components/registration/RegistrationForm'
+import logo from '@/assets/petralogo.png'
 
 function Registration() {
   return (
-    <div className="max-w-2xl mx-auto bg-gray-900 p-8 rounded-lg shadow-xl">
-      <h2 className="text-2xl font-bold mb-6 text-gray-100">Pet Subscription Registration</h2>
+    <div className="form-container">
+      <img 
+        src={logo} 
+        alt="Pet.Ra Logo" 
+        className="w-40 object-contain mx-auto mb-8" 
+      />
       <RegistrationForm />
     </div>
   )

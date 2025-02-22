@@ -4,11 +4,14 @@ import PersonalInfo from './PersonalInfo'
 import PetInfo from './PetInfo'
 import { useState } from 'react'
 
-const validationSchema = Yup.object({
+const personalInfoValidation = Yup.object({
   name: Yup.string().required('Name is required'),
   email: Yup.string().email('Invalid email').required('Email is required'),
   phone: Yup.string().required('Phone number is required'),
   address: Yup.string().required('Address is required'),
+})
+
+const petInfoValidation = Yup.object({
   petType: Yup.string().required('Pet type is required'),
   breed: Yup.string().required('Breed is required'),
   petPhoto: Yup.mixed().required('Pet photo is required')
@@ -16,6 +19,7 @@ const validationSchema = Yup.object({
 
 function RegistrationForm() {
   const [step, setStep] = useState(1)
+  const [showErrors, setShowErrors] = useState(false)
 
   const initialValues = {
     name: '',
@@ -30,7 +34,6 @@ function RegistrationForm() {
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       console.log('Form values:', values)
-      // Add API call here when ready
       setSubmitting(false)
     } catch (error) {
       console.error('Form submission error:', error)
@@ -38,23 +41,43 @@ function RegistrationForm() {
     }
   }
 
+  const handleNextStep = async (values, actions) => {
+    setShowErrors(true)
+    try {
+      await personalInfoValidation.validate(values, { abortEarly: false })
+      setStep(2)
+      setShowErrors(false)
+    } catch (err) {
+      const errors = {}
+      err.inner.forEach((e) => {
+        errors[e.path] = e.message
+      })
+      actions.setErrors(errors)
+    }
+  }
+
   return (
     <Formik
       initialValues={initialValues}
-      validationSchema={validationSchema}
+      validationSchema={step === 1 ? personalInfoValidation : petInfoValidation}
+      validateOnChange={false}
+      validateOnBlur={false}
       onSubmit={handleSubmit}
     >
-      {({ isSubmitting }) => (
+      {({ isSubmitting, values, setErrors }) => (
         <Form className="space-y-6">
-          {step === 1 && <PersonalInfo />}
+          {step === 1 && <PersonalInfo showErrors={showErrors} />}
           {step === 2 && <PetInfo />}
           
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-4 mt-8">
             {step > 1 && (
               <button
                 type="button"
-                onClick={() => setStep(step - 1)}
-                className="bg-gray-200 px-4 py-2 rounded-md"
+                onClick={() => {
+                  setStep(step - 1)
+                  setShowErrors(false)
+                }}
+                className="btn-secondary"
               >
                 Previous
               </button>
@@ -63,8 +86,8 @@ function RegistrationForm() {
             {step < 2 ? (
               <button
                 type="button"
-                onClick={() => setStep(step + 1)}
-                className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                onClick={() => handleNextStep(values, { setErrors })}
+                className="btn-primary ml-auto"
               >
                 Next
               </button>
@@ -72,9 +95,9 @@ function RegistrationForm() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                className="btn-primary ml-auto"
               >
-                Submit
+                {isSubmitting ? 'Submitting...' : 'Submit'}
               </button>
             )}
           </div>

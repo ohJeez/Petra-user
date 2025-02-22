@@ -1,63 +1,104 @@
 import { Field, ErrorMessage } from 'formik'
+import { TagIcon, PhotoIcon } from '@heroicons/react/24/outline'
+import { DOG_BREEDS, CAT_BREEDS } from '@/constants/formData'
 import { useState } from 'react'
 
-const DOG_BREEDS = ['Labrador', 'German Shepherd', 'Golden Retriever', 'Bulldog', 'Poodle']
-const CAT_BREEDS = ['Persian', 'Siamese', 'Maine Coon', 'British Shorthair', 'Bengal']
-
-function PetInfo() {
+function PetInfo({ showErrors }) {
   const [breeds, setBreeds] = useState([])
+  const [preview, setPreview] = useState(null)
 
-  const handlePetTypeChange = (e) => {
-    const petType = e.target.value
-    setBreeds(petType === 'dog' ? DOG_BREEDS : CAT_BREEDS)
+  const handlePetTypeChange = (type, form) => {
+    form.setFieldValue('petType', type)
+    form.setFieldValue('breed', '')
+    setBreeds(type === 'dog' ? DOG_BREEDS : CAT_BREEDS)
+  }
+
+  const handleFileChange = (event, form) => {
+    const file = event.currentTarget.files[0]
+    if (file) {
+      form.setFieldValue('petPhoto', file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-xl font-medium text-gray-100">Pet Information</h3>
+    <div className="space-y-6">
+      <h3 className="section-title">Pet Information</h3>
 
-      <div>
-        <label htmlFor="petType" className="input-label">Pet Type</label>
-        <Field
-          as="select"
-          name="petType"
-          id="petType"
-          onChange={handlePetTypeChange}
-          className="input-field"
-        >
-          <option value="">Select Pet Type</option>
-          <option value="dog">Dog</option>
-          <option value="cat">Cat</option>
-        </Field>
-        <ErrorMessage name="petType" component="div" className="text-red-500 text-sm mt-1" />
-      </div>
-
-      <div>
-        <label htmlFor="breed" className="input-label">Breed</label>
-        <Field as="select" name="breed" id="breed" className="input-field">
-          <option value="">Select Breed</option>
-          {breeds.map((breed) => (
-            <option key={breed} value={breed}>{breed}</option>
-          ))}
-        </Field>
-        <ErrorMessage name="breed" component="div" className="text-red-500 text-sm mt-1" />
-      </div>
-
-      <div>
-        <label htmlFor="petPhoto" className="input-label">Pet Photo</label>
-        <Field name="petPhoto">
+      <div className="input-group">
+        <Field name="petType">
           {({ form }) => (
-            <input
-              type="file"
-              onChange={(event) => {
-                form.setFieldValue('petPhoto', event.currentTarget.files[0])
-              }}
-              className="mt-1 block w-full text-gray-100"
-              accept="image/*"
-            />
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => handlePetTypeChange('dog', form)}
+                className={`pet-type-btn ${form.values.petType === 'dog' ? 'active' : ''}`}
+              >
+                <span className="text-2xl">🐕</span>
+                <span>Dog</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePetTypeChange('cat', form)}
+                className={`pet-type-btn ${form.values.petType === 'cat' ? 'active' : ''}`}
+              >
+                <span className="text-2xl">🐱</span>
+                <span>Cat</span>
+              </button>
+            </div>
           )}
         </Field>
-        <ErrorMessage name="petPhoto" component="div" className="text-red-500 text-sm mt-1" />
+        {showErrors && <ErrorMessage name="petType" component="div" className="form-error" />}
+      </div>
+
+      <div className="input-group">
+        <div className="input-wrapper">
+          <TagIcon className="input-icon w-5 h-5" />
+          <Field 
+            as="select" 
+            name="breed" 
+            id="breed" 
+            className="input-field pl-12 select-field" 
+          >
+            <option value="">Select Breed</option>
+            {breeds.map((breed) => (
+              <option key={breed} value={breed}>{breed}</option>
+            ))}
+          </Field>
+        </div>
+        {showErrors && <ErrorMessage name="breed" component="div" className="form-error" />}
+      </div>
+
+      <div className="input-group">
+        <div className="input-wrapper">
+          <PhotoIcon className="input-icon w-5 h-5" />
+          <Field name="petPhoto">
+            {({ form }) => (
+              <>
+                <input
+                  type="file"
+                  onChange={(event) => handleFileChange(event, form)}
+                  className="input-field pl-12 file-input"
+                  accept="image/*"
+                />
+                {preview && (
+                  <div className="mt-4 relative rounded-2xl overflow-hidden aspect-square w-32 mx-auto">
+                    <img 
+                      src={preview} 
+                      alt="Pet preview" 
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </Field>
+        </div>
+        {showErrors && <ErrorMessage name="petPhoto" component="div" className="form-error" />}
       </div>
     </div>
   )
