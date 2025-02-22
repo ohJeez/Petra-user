@@ -3,6 +3,8 @@ import * as Yup from 'yup'
 import PersonalInfo from './PersonalInfo'
 import PetInfo from './PetInfo'
 import { useState } from 'react'
+import SubscriptionPlan from './SubscriptionPlan'
+import ProductSelection from './ProductSelection'
 
 const personalInfoValidation = Yup.object({
   name: Yup.string().required('Name is required'),
@@ -17,6 +19,23 @@ const petInfoValidation = Yup.object({
   petPhoto: Yup.mixed().required('Pet photo is required')
 })
 
+const subscriptionValidation = Yup.object({
+  subscriptionPlan: Yup.string().required('Please select a subscription plan')
+})
+
+const productSelectionValidation = Yup.object({
+  selectedProducts: Yup.object().shape({
+    food: Yup.array().min(1, 'Please select at least one food item'),
+    grooming: Yup.array().min(1, 'Please select at least one grooming product'),
+    toys: Yup.array().when('subscriptionPlan', {
+      is: (val) => val !== 'essential',
+      then: () => Yup.array().min(1, 'Please select at least one toy'),
+      otherwise: () => Yup.array()
+    }),
+    variants: Yup.object()
+  })
+})
+
 function RegistrationForm() {
   const [step, setStep] = useState(1)
   const [showErrors, setShowErrors] = useState(false)
@@ -28,7 +47,13 @@ function RegistrationForm() {
     address: '',
     petType: '',
     breed: '',
-    petPhoto: null
+    petPhoto: null,
+    subscriptionPlan: '',
+    selectedProducts: {
+      food: [],
+      grooming: [],
+      toys: []
+    }
   }
 
   const handleSubmit = async (values, { setSubmitting }) => {
@@ -44,8 +69,8 @@ function RegistrationForm() {
   const handleNextStep = async (values, actions) => {
     setShowErrors(true)
     try {
-      await personalInfoValidation.validate(values, { abortEarly: false })
-      setStep(2)
+      await getValidationSchema(step).validate(values, { abortEarly: false })
+      setStep(prev => Math.min(prev + 1, 4))
       setShowErrors(false)
     } catch (err) {
       const errors = {}
@@ -56,10 +81,25 @@ function RegistrationForm() {
     }
   }
 
+  const getValidationSchema = (currentStep) => {
+    switch (currentStep) {
+      case 1:
+        return personalInfoValidation
+      case 2:
+        return petInfoValidation
+      case 3:
+        return subscriptionValidation
+      case 4:
+        return productSelectionValidation
+      default:
+        return null
+    }
+  }
+
   return (
     <Formik
       initialValues={initialValues}
-      validationSchema={step === 1 ? personalInfoValidation : petInfoValidation}
+      validationSchema={getValidationSchema(step)}
       validateOnChange={false}
       validateOnBlur={false}
       onSubmit={handleSubmit}
@@ -67,7 +107,9 @@ function RegistrationForm() {
       {({ isSubmitting, values, setErrors }) => (
         <Form className="space-y-6">
           {step === 1 && <PersonalInfo showErrors={showErrors} />}
-          {step === 2 && <PetInfo />}
+          {step === 2 && <PetInfo showErrors={showErrors} />}
+          {step === 3 && <SubscriptionPlan showErrors={showErrors} />}
+          {step === 4 && <ProductSelection showErrors={showErrors} />}
           
           <div className="flex justify-between gap-4 mt-8">
             {step > 1 && (
@@ -83,7 +125,7 @@ function RegistrationForm() {
               </button>
             )}
             
-            {step < 2 ? (
+            {step < 4 ? (
               <button
                 type="button"
                 onClick={() => handleNextStep(values, { setErrors })}

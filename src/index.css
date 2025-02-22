@@ -107,4 +107,67 @@ body {
     @apply file:hover:bg-opacity-90 file:transition-all;
     @apply text-brand-blue/70 cursor-pointer;
   }
+
+  .plan-card {
+    @apply relative p-6 rounded-3xl bg-white text-left transition-all duration-200;
+    @apply border-2 border-transparent hover:border-brand-blue;
+    @apply flex flex-col gap-6;
+  }
+
+  .plan-card.active {
+    @apply border-brand-blue;
+    @apply transform -translate-y-1 shadow-lg;
+  }
+
+  .plan-header {
+    @apply space-y-2 text-center;
+  }
+
+  .plan-name {
+    @apply text-2xl font-bold text-brand-blue;
+  }
+
+  .plan-price-container {
+    @apply space-y-1 mt-3;
+  }
+
+  .plan-price {
+    @apply text-3xl font-bold text-brand-blue;
+  }
+
+  .plan-description {
+    @apply text-sm text-brand-blue/70 mt-2;
+  }
+
+  .plan-features {
+    @apply space-y-3 mt-2 text-left;
+  }
+
+  .feature-item {
+    @apply flex items-start gap-2 text-sm text-brand-blue/80;
+  }
+
+  .feature-item strong {
+    @apply font-semibold text-brand-blue;
+  }
+
+  .product-card {
+    @apply relative p-6 rounded-3xl bg-white text-center transition-all duration-200;
+    @apply border-2 border-transparent hover:border-brand-blue;
+    @apply flex flex-col items-center gap-3;
+  }
+
+  .product-card.active {
+    @apply border-brand-blue;
+    @apply transform -translate-y-1 shadow-lg;
+  }
+
+  .product-card:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    @apply hover:border-transparent transform-none;
+  }
+
+  .product-name {
+    @apply text-lg font-semibold text-brand-blue;
+  }
 }
