@@ -2,18 +2,32 @@ import { Formik, Form } from 'formik'
 import * as Yup from 'yup'
 import PersonalInfo from './PersonalInfo'
 import PetInfo from './PetInfo'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SubscriptionPlan from './SubscriptionPlan'
-import ProductSelection from './ProductSelection'
+import ReactConfetti from 'react-confetti'
+import { SUBSCRIPTION_PLANS } from '@/constants/formData'
+import emailjs from '@emailjs/browser'
 
 const personalInfoValidation = Yup.object({
   name: Yup.string().required('Name is required'),
   email: Yup.string().email('Invalid email').required('Email is required'),
-  phone: Yup.string().required('Phone number is required'),
-  address: Yup.string().required('Address is required'),
+  phone: Yup.string()
+    .required('Phone number is required')
+    .matches(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit mobile number starting with 6-9'),
+  address: Yup.object({
+    street: Yup.string().required('Street address is required'),
+    apartment: Yup.string(),
+    city: Yup.string().required('City is required'),
+    state: Yup.string().required('State is required'),
+    pincode: Yup.string()
+      .required('PIN code is required')
+      .matches(/^[1-9][0-9]{5}$/, 'Invalid PIN code'),
+    landmark: Yup.string()
+  })
 })
 
 const petInfoValidation = Yup.object({
+  petName: Yup.string().required('Pet name is required'),
   petType: Yup.string().required('Pet type is required'),
   breed: Yup.string().required('Breed is required'),
   petPhoto: Yup.mixed().required('Pet photo is required')
@@ -23,62 +37,108 @@ const subscriptionValidation = Yup.object({
   subscriptionPlan: Yup.string().required('Please select a subscription plan')
 })
 
-const productSelectionValidation = Yup.object({
-  selectedProducts: Yup.object().shape({
-    food: Yup.array().min(1, 'Please select at least one food item'),
-    grooming: Yup.array().min(1, 'Please select at least one grooming product'),
-    toys: Yup.array().when('subscriptionPlan', {
-      is: (val) => val !== 'essential',
-      then: () => Yup.array().min(1, 'Please select at least one toy'),
-      otherwise: () => Yup.array()
-    }),
-    variants: Yup.object()
-  })
-})
-
 function RegistrationForm() {
   const [step, setStep] = useState(1)
   const [showErrors, setShowErrors] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [submittedData, setSubmittedData] = useState(null)
+  const [showConfetti, setShowConfetti] = useState(false)
+
+  useEffect(() => {
+    if (showConfetti) {
+      const timer = setTimeout(() => setShowConfetti(false), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [showConfetti])
 
   const initialValues = {
     name: '',
     email: '',
     phone: '',
-    address: '',
+    address: {
+      street: '',
+      apartment: '',
+      city: '',
+      state: '',
+      pincode: '',
+      landmark: ''
+    },
+    petName: '',
     petType: '',
     breed: '',
     petPhoto: null,
-    subscriptionPlan: '',
-    selectedProducts: {
-      food: [],
-      grooming: [],
-      toys: []
-    }
+    subscriptionPlan: ''
   }
 
-  const handleSubmit = async (values, { setSubmitting }) => {
+  const sendEmail = async (data) => {
+    const selectedPlan = SUBSCRIPTION_PLANS.find(plan => plan.id === data.subscriptionPlan)
+    
+    const emailContent = `
+      New Registration:
+
+      Personal Details:
+      Name: ${data.name}
+      Email: ${data.email}
+      Phone: ${data.phone}
+
+      Pet Details:
+      Name: ${data.petName}
+      Type: ${data.petType}
+      Breed: ${data.breed}
+
+      Subscription Plan:
+      Plan: ${selectedPlan?.name}
+      Price: ₹${selectedPlan?.price}/month
+
+      Delivery Address:
+      ${data.address.street}
+      ${data.address.apartment ? data.address.apartment + '\n' : ''}
+      ${data.address.city}, ${data.address.state}
+      PIN: ${data.address.pincode}
+      ${data.address.landmark ? 'Landmark: ' + data.address.landmark : ''}
+    `
+
     try {
-      console.log('Form values:', values)
-      setSubmitting(false)
+      await emailjs.send(
+        'service_81bbn4q',
+        'YOUR_TEMPLATE_ID', // ⚠️ Still need your template ID
+        {
+          to_email: 'petragroupofficial@gmail.com',
+          message: emailContent,
+          from_name: data.name,
+          reply_to: data.email
+        },
+        'FGoHW08MtDrWbFWC4' // Your public key
+      )
+      console.log('Email sent successfully!')
     } catch (error) {
-      console.error('Form submission error:', error)
-      setSubmitting(false)
+      console.error('Email sending failed:', error)
     }
   }
 
-  const handleNextStep = async (values, actions) => {
+  const handleSubmit = async (values, { setSubmitting, setErrors }) => {
     setShowErrors(true)
     try {
-      await getValidationSchema(step).validate(values, { abortEarly: false })
-      setStep(prev => Math.min(prev + 1, 4))
-      setShowErrors(false)
+      const schema = getValidationSchema(step)
+      await schema.validate(values, { abortEarly: false })
+      if (step < 3) {
+        setStep(prev => prev + 1)
+        setShowErrors(false)
+      } else {
+        setSubmittedData(values)
+        setIsSuccess(true)
+        setShowConfetti(true)
+        await sendEmail(values)
+      }
     } catch (err) {
+      console.log('Validation errors:', err.inner)
       const errors = {}
       err.inner.forEach((e) => {
         errors[e.path] = e.message
       })
-      actions.setErrors(errors)
+      setErrors(errors)
     }
+    setSubmitting(false)
   }
 
   const getValidationSchema = (currentStep) => {
@@ -89,29 +149,100 @@ function RegistrationForm() {
         return petInfoValidation
       case 3:
         return subscriptionValidation
-      case 4:
-        return productSelectionValidation
       default:
-        return null
+        return Yup.object({})
     }
+  }
+
+  if (isSuccess) {
+    const selectedPlan = SUBSCRIPTION_PLANS.find(plan => plan.id === submittedData.subscriptionPlan)
+    
+    return (
+      <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg">
+        {showConfetti && <ReactConfetti />}
+        
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-purple-600 mb-2">
+            Registration Successful!
+          </h2>
+          <p className="text-gray-600">
+            Thank you for choosing our pet care service!
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">👤</span>
+              <h3 className="text-lg font-semibold text-purple-600">Personal Details</h3>
+            </div>
+            <div className="ml-7 text-gray-700">
+              <p>{submittedData.name}</p>
+              <p>{submittedData.email}</p>
+              <p>{submittedData.phone}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">🐾</span>
+              <h3 className="text-lg font-semibold text-purple-600">Pet Details</h3>
+            </div>
+            <div className="ml-7 text-gray-700">
+              <p>{submittedData.petName}</p>
+              <p className="capitalize">{submittedData.petType}</p>
+              <p>{submittedData.breed}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">📦</span>
+              <h3 className="text-lg font-semibold text-purple-600">Subscription Plan</h3>
+            </div>
+            <div className="ml-7">
+              <p className="font-medium">{selectedPlan?.name}</p>
+              <p className="text-gray-600 text-sm">{selectedPlan?.description}</p>
+              <p className="text-purple-600 font-medium mt-1">₹{selectedPlan?.price}/month</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">📍</span>
+              <h3 className="text-lg font-semibold text-purple-600">Delivery Address</h3>
+            </div>
+            <div className="ml-7 text-gray-700">
+              <p>{submittedData.address.street}</p>
+              {submittedData.address.apartment && (
+                <p>{submittedData.address.apartment}</p>
+              )}
+              <p>{submittedData.address.city}, {submittedData.address.state}</p>
+              <p>PIN: {submittedData.address.pincode}</p>
+              {submittedData.address.landmark && (
+                <p className="text-gray-500">Landmark: {submittedData.address.landmark}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <Formik
       initialValues={initialValues}
-      validationSchema={getValidationSchema(step)}
+      onSubmit={handleSubmit}
       validateOnChange={false}
       validateOnBlur={false}
-      onSubmit={handleSubmit}
     >
-      {({ isSubmitting, values, setErrors }) => (
-        <Form className="space-y-6">
+      {({ isSubmitting }) => (
+        <Form className="w-full max-w-md mx-auto">
           {step === 1 && <PersonalInfo showErrors={showErrors} />}
           {step === 2 && <PetInfo showErrors={showErrors} />}
           {step === 3 && <SubscriptionPlan showErrors={showErrors} />}
-          {step === 4 && <ProductSelection showErrors={showErrors} />}
           
-          <div className="flex justify-between gap-4 mt-8">
+          <div className="flex justify-between gap-4 mt-8 px-4">
             {step > 1 && (
               <button
                 type="button"
@@ -125,23 +256,13 @@ function RegistrationForm() {
               </button>
             )}
             
-            {step < 4 ? (
-              <button
-                type="button"
-                onClick={() => handleNextStep(values, { setErrors })}
-                className="btn-primary ml-auto"
-              >
-                Next
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn-primary ml-auto"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit'}
-              </button>
-            )}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-primary ml-auto"
+            >
+              {step < 3 ? 'Next' : 'Submit'}
+            </button>
           </div>
         </Form>
       )}
@@ -149,4 +270,4 @@ function RegistrationForm() {
   )
 }
 
-export default RegistrationForm 
+export default RegistrationForm

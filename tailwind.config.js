@@ -11,7 +11,8 @@ export default {
           orange: '#FEB22E',
           cream: '#FFE4B4',
           blue: '#30358B'
-        }
+        },
+        'brand-purple': '#7C3AED',
       }
     },
   },
