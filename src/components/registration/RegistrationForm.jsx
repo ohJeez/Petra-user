@@ -43,6 +43,7 @@ function RegistrationForm() {
   const [isSuccess, setIsSuccess] = useState(false)
   const [submittedData, setSubmittedData] = useState(null)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [emailStatus, setEmailStatus] = useState('')
 
   useEffect(() => {
     if (showConfetti) {
@@ -71,6 +72,7 @@ function RegistrationForm() {
   }
 
   const sendEmail = async (data) => {
+    setEmailStatus('sending')
     const selectedPlan = SUBSCRIPTION_PLANS.find(plan => plan.id === data.subscriptionPlan)
     
     const emailContent = `
@@ -99,20 +101,22 @@ function RegistrationForm() {
     `
 
     try {
-      await emailjs.send(
+      const result = await emailjs.send(
         'service_81bbn4q',
-        'YOUR_TEMPLATE_ID', // ⚠️ Still need your template ID
+        'template_046ln7g',
         {
           to_email: 'petragroupofficial@gmail.com',
           message: emailContent,
           from_name: data.name,
           reply_to: data.email
         },
-        'FGoHW08MtDrWbFWC4' // Your public key
+        'FGoHW08MtDrWbFWC4'
       )
-      console.log('Email sent successfully!')
+      console.log('Email sent successfully!', result)
+      setEmailStatus('success')
     } catch (error) {
       console.error('Email sending failed:', error)
+      setEmailStatus('error')
     }
   }
 
@@ -168,6 +172,18 @@ function RegistrationForm() {
           <p className="text-gray-600">
             Thank you for choosing our pet care service!
           </p>
+          
+          {emailStatus === 'sending' && (
+            <p className="text-blue-600 mt-2">Sending confirmation email...</p>
+          )}
+          {emailStatus === 'success' && (
+            <p className="text-green-600 mt-2">✓ Confirmation email sent!</p>
+          )}
+          {emailStatus === 'error' && (
+            <p className="text-red-600 mt-2">
+              ⚠️ Couldn't send confirmation email. We'll contact you shortly.
+            </p>
+          )}
         </div>
 
         <div className="space-y-6">
